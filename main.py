@@ -1,11 +1,29 @@
-import socket
-import dpkt
-from pygeoip import GeoIP
+# Network Traffic Packet Visualizer
+# Author: @MattBoraske
+#
+# Dependencies: dpkt, pygeoip, requests
+#
+# Description: This script will take a packet capture file and 
+#              create a KML file that can be used to plot the 
+#              source and destination IP addresses on a Google Earth map.
+#
+# Note: A packet capture file (.pcap) is needed as input for this script. 
+#       One tool that you can use to create a packet capture file is Wireshark.
 
-gi = GeoIP('GeoLiteCity.dat')
+import socket #https://docs.python.org/3/library/socket.html
+import dpkt #https://dpkt.readthedocs.io/en/latest/
+from pygeoip import GeoIP #https://pypi.org/project/pygeoip/
+import requests #https://www.w3schools.com/python/module_requests.asp
+
+# GeoIP database
+gi = GeoIP('maxmind.dat') #https://www.miyuru.lk/geoiplegacy - download the MaxMind - City IPv6/IPv4 .dat file
+
+# Get the source IP address
+SOURCE_IP = requests.get('https://api.ipify.org').content.decode('utf8')
 
 def main():
-    f = open('wire.pcap', 'rb')
+    packetCapture = input("Enter the name of the packet capture file: ")
+    f = open(packetCapture, 'rb')
     pcap = dpkt.pcap.Reader(f)
     kmlheader = '<?xml version="1.0" encoding="UTF-8"?> \n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n'\
     '<Style id="transBluePoly">' \
@@ -16,8 +34,14 @@ def main():
                 '</Style>'
     kmlfooter = '</Document>\n</kml>\n'
     kmldoc=kmlheader+plotIPs(pcap)+kmlfooter
-    print(kmldoc)
 
+    with open("ipdata.kml", "w") as file:
+        file.write(kmldoc)
+    print(kmldoc)
+    print(f"source ip: {SOURCE_IP}")
+
+if __name__ == '__main__':
+    main()
 
 def plotIPs(pcap):
     kmlPts = ''
@@ -33,10 +57,11 @@ def plotIPs(pcap):
             pass
     return kmlPts
 
-
 def retKML(dstip, srcip):
     dst = gi.record_by_name(dstip)
-    src = gi.record_by_name('174.198.1.45')
+    src = gi.record_by_name(SOURCE_IP)
+    #src = gi.record_by_name('174.198.18.60')
+    #print("\t\tgi src: ", src)
     try:
         dstlongitude = dst['longitude']
         dstlatitude = dst['latitude']
@@ -56,9 +81,5 @@ def retKML(dstip, srcip):
         return kml
     except:
         return ''
-    
-if __name__ == '__main__':
-    main()
-
 
 
